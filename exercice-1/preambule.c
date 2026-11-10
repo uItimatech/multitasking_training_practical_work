@@ -9,13 +9,14 @@
 #define SEMAPHORE_INITIAL_VALUE 0
 #define SEM_NAME "/preambule_sem"
 
-pthread_t thread_1;
-sem_t *semaphore;
+pthread_t thread_1; // Q2. Nom du thread
+sem_t *semaphore; // Q3. Nom du sémaphore
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Q4. Nom du mutex
 
 void *produce(void *params)
 {
+    // Q6. Point d'entrée du thread
     printf("Trying to own the mutex\n");
     pthread_mutex_lock(&mutex);
     printf("Owns the mutex\n");
@@ -41,10 +42,10 @@ int main()
         return ERROR_INIT;
     }
     printf("Creating the thread\n");
-    pthread_create(&thread_1, NULL, produce, NULL);
+    pthread_create(&thread_1, NULL, produce, NULL); // Q5. Création du thread 
 
     printf("Waiting the thread end\n");
-    pthread_join(thread_1, NULL);
+    pthread_join(thread_1, NULL);  // Q7. Attente de la n du thread
     printf("Deleting the semaphore\n");
     sem_destroy(semaphore);
     printf("Process ended\n");
