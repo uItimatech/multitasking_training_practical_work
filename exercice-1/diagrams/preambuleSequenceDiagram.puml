@@ -58,6 +58,6 @@ main -> semaphore: sem_destroy
 activate semaphore #gold
 return
 
-main -> bash --++: exit code
+main -> bash --++: return ERROR_SUCCESS
 
 @enduml

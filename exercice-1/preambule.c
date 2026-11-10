@@ -53,4 +53,4 @@ int main()
 
 // Q9. On utilise make qui va faire appel au compilateur pour générer un exécutable puis lancer ce-dernier
 // Q10. Cf. Diagramme (note: ./preambule est un EXEC par un FORK)
-// Q11.
+// Q11. Non pas complète: requiert les comportements d'erreur
