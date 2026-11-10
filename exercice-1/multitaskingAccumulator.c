@@ -30,5 +30,4 @@ int main( void )
 	printf("[multitaskingAccumulator]Threads terminated\n");
 
 	exit(EXIT_SUCCESS);
-
 }

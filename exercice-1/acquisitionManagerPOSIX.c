@@ -22,7 +22,7 @@ static void *produce(void *params);
 /**
 * Semaphores and Mutex
 */
-//TODO
+pthread_mutex_t m1 = PTHREAD_MUTEX_INITIALIZER; // 1 at the start
 
 /*
 * Creates the synchronization elements.
@@ -45,13 +45,13 @@ static unsigned int createSynchronizationObjects(void)
 
 static void incrementProducedCount(void)
 {
-	//TODO
+	produceCount++;
 }
 
 unsigned int getProducedCount(void)
 {
 	unsigned int p = 0;
-	//TODO
+	p = produceCount;
 	return p;
 }
 
@@ -73,7 +73,7 @@ unsigned int acquisitionManagerInit(void)
 
 	for (i = 0; i < PRODUCER_COUNT; i++)
 	{
-		//TODO
+		pthread_create(&producers[i], NULL, produce, NULL);
 	}
 
 	return ERROR_SUCCESS;
@@ -84,10 +84,10 @@ void acquisitionManagerJoin(void)
 	unsigned int i;
 	for (i = 0; i < PRODUCER_COUNT; i++)
 	{
-		//TODO
+		pthread_join(producers[i], NULL);
 	}
 
-	//TODO
+	//TODO sem_destroy(semaphore);
 	printf("[acquisitionManager]Semaphore cleaned\n");
 }
 
