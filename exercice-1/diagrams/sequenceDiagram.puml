@@ -1,0 +1,113 @@
+@startuml
+!pragma teoz true
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 260
+
+box "bash process"
+participant bash
+end box
+
+box "multitaskingAccumulatorPosix process (child process)" #lightblue
+participant "main" as main
+participant "producers[capteur]:pthread_t\n(x4, capteur = 0..3)" as prod
+participant "consumer:pthread_t" as cons
+participant "displayThread:pthread_t" as disp
+participant "sem_libre:sem_t\n(init BUFFER_SIZE)" as semLibre
+participant "sem_plein:sem_t\n(init 0)" as semPlein
+participant "mutex_idx_libre:\npthread_mutex_t" as mLibre
+participant "mutex_idx_plein:\npthread_mutex_t" as mPlein
+participant "mutex_count:\npthread_mutex_t" as mCount
+participant "mutex_consume:\npthread_mutex_t" as mConsume
+end box
+
+activate bash
+bash -> main --++ : ./multitaskingAccumulatorPosix
+
+group acquisitionManagerInit()
+group createSynchronizationObjects()
+main -> semLibre : sem_unlink("/sem_libre")\nsem_open("/sem_libre", O_CREAT, 0664, BUFFER_SIZE)
+activate semLibre #gold
+return
+main -> semPlein : sem_unlink("/sem_plein")\nsem_open("/sem_plein", O_CREAT, 0644, 0)
+activate semPlein #gold
+return
+end
+main -> prod : pthread_create(&producers[k], NULL, produce, &ids[k])
+activate prod #FFBBBB
+note over prod : produce
+end
+group messageAdderInit()
+main -> cons : pthread_create(&consumer, NULL, sum, NULL)
+activate cons #BBFFBB
+note over cons : sum
+end
+group displayManagerInit()
+main -> disp : pthread_create(&displayThread, NULL, display, NULL)
+activate disp #BBBBFF
+note over disp : display
+end
+main -> disp : displayManagerJoin(): pthread_join(displayThread)
+deactivate main
+
+opt checksum valide (Exigence 3)
+prod -> semLibre : sem_wait(sem_libre) : attend une case libre
+activate semLibre #gold
+return
+prod -> mLibre : pthread_mutex_lock()
+activate mLibre #plum
+prod -> mLibre : pthread_mutex_unlock()
+deactivate mLibre
+prod -> mPlein : pthread_mutex_lock()
+activate mPlein #plum
+prod -> mPlein : pthread_mutex_unlock()
+deactivate mPlein
+group incrementProducedCount()
+prod -> mCount : pthread_mutex_lock()
+activate mCount #plum
+prod -> mCount : pthread_mutex_unlock()
+deactivate mCount
+end
+prod -> semPlein : sem_post(sem_plein) : signale un message disponible\n(APRES incrementProducedCount)
+activate semPlein #gold
+return
+end
+group getMessage()  [AcquisitionManager]
+cons -> semPlein : sem_wait(sem_plein) : bloque tant que le tampon est vide
+activate semPlein #gold
+return
+cons -> semLibre : sem_post(sem_libre) : libere la case
+activate semLibre #gold
+return
+end
+cons -> mConsume : pthread_mutex_lock()
+activate mConsume #plum
+cons -> mConsume : pthread_mutex_unlock()
+deactivate mConsume
+group getCoherentCount(&message, &consumedCount)  [MessageAdder]
+disp -> mConsume : pthread_mutex_lock()
+activate mConsume #plum
+disp -> mConsume : pthread_mutex_unlock()
+deactivate mConsume
+end
+group getProducedCount()  [AcquisitionManager] (lu APRES consumedCount)
+disp -> mCount : pthread_mutex_lock()
+activate mCount #plum
+disp -> mCount : pthread_mutex_unlock()
+deactivate mCount
+end
+
+disp --> main --++
+deactivate disp
+main -> cons : messageAdderJoin(): pthread_join(consumer)
+deactivate main
+cons --> main --++
+deactivate cons
+main -> prod : acquisitionManagerJoin(): pthread_join(producers[k])
+deactivate main
+prod --> main --++
+deactivate prod
+main -> semLibre : sem_close(sem_libre)\nsem_unlink("/sem_libre")
+main -> semPlein : sem_close(sem_plein)\nsem_unlink("/sem_plein")
+main -> bash --++ : exit(EXIT_SUCCESS)
+
+@enduml
