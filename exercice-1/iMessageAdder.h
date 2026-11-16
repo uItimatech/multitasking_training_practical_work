@@ -13,4 +13,6 @@ MSG_BLOCK getCurrentSum();
 */
 unsigned int getConsumedCount();
 
+void getCoherentCount(MSG_BLOCK *sum, unsigned int *count);
+
 #endif

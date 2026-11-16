@@ -1,6 +1,7 @@
 .POSIX:
 CC      = cc
 CFLAGS  = -std=c11 -Wall -Wextra -O3 -mcx16 -pthread #-DDEBUG
+CFLAGS  = -std=c11 -Wall -Wextra -O3 -mcx16 -pthread -D_GNU_SOURCE #-DDEBUG
 LDFLAGS = -pthread
 #LDLIBS  = -latomic
 

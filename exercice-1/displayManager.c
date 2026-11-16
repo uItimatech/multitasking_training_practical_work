@@ -32,8 +32,20 @@ static void *display( void *parameters )
 	unsigned int diffCount = 0;
 	while(diffCount < DISPLAY_LOOP_LIMIT){
 		sleep(DISPLAY_SLEEP_TIME);
-		//TODO
+		MSG_BLOCK message;
+		unsigned int consumedCount;
+		getCoherentCount(&message, &consumedCount);  // Q8 fonction pour une meilleure cohérence
+		unsigned int producedCount = getProducedCount(); 
+
+		messageDisplay(&message);
+		print(producedCount, consumedCount);
+
+		if (consumedCount == PRODUCER_COUNT * PRODUCER_LOOP_LIMIT)
+		{
+		diffCount++;
+		}
 	}
 	printf("[displayManager] %d termination\n", gettid());
-   //TODO
+    pthread_exit(NULL);
+
 }
