@@ -15,6 +15,7 @@
 
 //producer count storage
 volatile unsigned int produceCount = 0;
+static int ids[PRODUCER_COUNT];
 MSG_BLOCK data_buffer[BUFFER_SIZE];
 int tab_indices_libres[BUFFER_SIZE];
 int tab_indices_pleines[BUFFER_SIZE];
@@ -22,9 +23,8 @@ int j_vide; // variable globale des indices du tableau cases vides pour pour pro
 int j_plein; // variable globale des indices du tableau cases pleines pour produce
 int i_vide; // variable globale des indices du tableau cases vides pour getmessage (consumer)
 int i_plein; // variable globale des indices du tableau cases pleines getmessage (consumer)
+
 pthread_t producers[4];
-
-
 
 static void *produce(void *params);
 
@@ -33,6 +33,7 @@ static void *produce(void *params);
 */
 pthread_mutex_t mutex_idx_libre = PTHREAD_MUTEX_INITIALIZER; // 1 at the start
 pthread_mutex_t mutex_idx_plein = PTHREAD_MUTEX_INITIALIZER; // 1 at the start
+pthread_mutex_t mutex_count = PTHREAD_MUTEX_INITIALIZER; // 1 at the start
 
 sem_t *sem_libre;
 sem_t *sem_plein;
@@ -70,13 +71,19 @@ static unsigned int createSynchronizationObjects(void)
 
 static void incrementProducedCount(void)
 {
+	pthread_mutex_lock(&mutex_count);
 	produceCount++;
+	pthread_mutex_unlock(&mutex_count);
+
 }
 
 unsigned int getProducedCount(void)
 {
 	unsigned int p = 0;
+	pthread_mutex_lock(&mutex_count);
 	p = produceCount;
+	pthread_mutex_unlock(&mutex_count);
+
 	return p;
 }
 
@@ -108,10 +115,14 @@ unsigned int acquisitionManagerInit(void)
 	printf("[acquisitionManager]Synchronization initialization done.\n");
 
 	// initialisations des tableaux et variables
-	
+
 	for(i=0; i<BUFFER_SIZE; i++){
 		tab_indices_pleines[i]=0;
 		tab_indices_libres[i]=i;
+	}
+
+	for(i=0; i<PRODUCER_COUNT; i++){
+		ids[i]=i;
 	}
 
 	j_vide =0;
@@ -121,7 +132,7 @@ unsigned int acquisitionManagerInit(void)
 
 	for (i = 0; i < PRODUCER_COUNT; i++)
 	{
-		pthread_create(&producers[i], NULL, produce, NULL);
+		pthread_create(&producers[i], NULL, produce,&ids[i]);
 	}
 
 	return ERROR_SUCCESS;
@@ -145,6 +156,7 @@ void acquisitionManagerJoin(void)
 void *produce(void* params)
 {
 	D(printf("[acquisitionManager]Producer created with id %d\n", gettid()));
+	int capteur = *(int *) params;
 	unsigned int i = 0;
 	int j=0;
 	while (i < PRODUCER_LOOP_LIMIT)
@@ -152,7 +164,7 @@ void *produce(void* params)
 		i++;
 		sleep(PRODUCER_SLEEP_TIME+(rand() % 5));
 		MSG_BLOCK local_buffer;
-		getInput(i, &local_buffer); // Get the message from the sensor
+		getInput(capteur, &local_buffer); // Get the message from the sensor
 		if (messageCheck(&local_buffer)){ //Message verification
 			
 			sem_wait(sem_libre);
@@ -169,10 +181,12 @@ void *produce(void* params)
 			j_plein=(j_plein +1)%BUFFER_SIZE;
 			pthread_mutex_unlock(&mutex_idx_plein);
 
+			incrementProducedCount();
+
 			sem_post(sem_plein);
 		}
 		
 	}
 	printf("[acquisitionManager] %d termination\n", gettid());
-	//TODO
+	pthread_exit(NULL);
 }
