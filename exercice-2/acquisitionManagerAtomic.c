@@ -71,7 +71,8 @@ static unsigned int createSynchronizationObjects(void)
 
 static void incrementProducedCount(void)
 {
-	atomic_fetch_add(&produceCount, 1);
+	produceCount++;
+	//atomic_fetch_add(&produceCount, 1);
 }
 
 unsigned int getProducedCount(void)

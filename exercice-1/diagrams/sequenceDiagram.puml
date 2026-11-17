@@ -9,13 +9,19 @@ participant "main" as main
 participant "producers[capteur]:pthread_t\n(x4, capteur = 0-3)" as prod
 participant "consumer:pthread_t" as cons
 participant "displayThread:pthread_t" as disp
-participant "sem_libre:sem_t\n(init BUFFER_SIZE)" as semLibre
-participant "sem_plein:sem_t\n(init 0)" as semPlein
+participant "sem_libre:sem_t" as semLibre
+participant "sem_plein:sem_t" as semPlein
 participant "mutex_idx_libre:\npthread_mutex_t" as mLibre
 participant "mutex_idx_plein:\npthread_mutex_t" as mPlein
 participant "mutex_count:\npthread_mutex_t" as mCount
 participant "mutex_consume:\npthread_mutex_t" as mConsume
 end box
+
+note over mLibre: 1
+note over mPlein: 1
+note over mCount: 1
+note over mConsume: 1
+
 
 activate bash
 bash -> main --++ : ./multitaskingAccumulatorPosix
@@ -25,9 +31,11 @@ group createSynchronizationObjects()
 main -> semLibre : sem_unlink\nsem_open
 activate semLibre #gold
 return
+note over semLibre: BUFFER_SIZE
 main -> semPlein : sem_unlink\nsem_open
 activate semPlein #gold
 return
+note over semPlein: BUFFER_SIZE
 end
 main -> prod : pthread_create
 activate prod #FFBBBB
@@ -51,18 +59,24 @@ prod -> semLibre : sem_wait (attend une case libre)
 activate semLibre #gold
 return
 prod -> mLibre : pthread_mutex_lock
+note over mLibre: 0
 activate mLibre #plum
 prod -> mLibre : pthread_mutex_unlock
 deactivate mLibre
+note over mLibre: 1
 prod -> mPlein : pthread_mutex_lock
+note over mPlein: 0
 activate mPlein #plum
 prod -> mPlein : pthread_mutex_unlock
 deactivate mPlein
+note over mPlein: 1
 group incrementProducedCount()
 prod -> mCount : pthread_mutex_lock
+note over mCount: 0
 activate mCount #plum
 prod -> mCount : pthread_mutex_unlock
 deactivate mCount
+note over mCount: 1
 end
 prod -> semPlein : sem_post (signale un message disponible\nAPRES incrementProducedCount)
 activate semPlein #gold
@@ -77,20 +91,26 @@ activate semLibre #gold
 return
 end
 cons -> mConsume : pthread_mutex_lock
+note over mConsume: 0
 activate mConsume #plum
 cons -> mConsume : pthread_mutex_unlock
 deactivate mConsume
+note over mConsume: 1
 group getCoherentCount(&message, &consumedCount)  [MessageAdder]
 disp -> mConsume : pthread_mutex_lock
+note over mConsume: 0
 activate mConsume #plum
 disp -> mConsume : pthread_mutex_unlock
 deactivate mConsume
+note over mConsume: 1
 end
 group getProducedCount()  [AcquisitionManager] (lu APRES consumedCount)
 disp -> mCount : pthread_mutex_lock
+note over mCount: 0
 activate mCount #plum
 disp -> mCount : pthread_mutex_unlock
 deactivate mCount
+note over mCount: 1
 end
 
 disp --> main --++
