@@ -1,63 +1,94 @@
 @startuml
 
-dataclass MSG_BLOCK
+class MSG_BLOCK <<dataType>>
+MSG_BLOCK : + checksum: unsigned int
+MSG_BLOCK : + mData[DATA_SIZE]: unsigned int
 
 class MultitaskingAccumulator
 MultitaskingAccumulator : + main()
 
 interface ISensor
-ISensor : + getInput(int i): MSG_BLOCK
+ISensor : + getInput(unsigned int input, MSG_BLOCK* mBlock)
 
 interface IAcquisitionManager
-IAcquisitionManager : + getProducedCount(): Integer
-IAcquisitionManager : + getMessage():MSG_BLOCK
+IAcquisitionManager : + getProducedCount(): unsigned int
+IAcquisitionManager : + getMessage(): MSG_BLOCK
 
-class AcquisitionManager
-AcquisitionManager : - producers[4]: pthread_t
-AcquisitionManager : - m1: pthread_mutex_t
-AcquisitionManager : - producedCount: Integer
-AcquisitionManager : - produce()
-AcquisitionManager : + acquisitionManagerInit()
-AcquisitionManager : + acquisitionManagerJoin()
+class AcquisitionManager {
+  ..Threads..
+  - producers[PRODUCER_COUNT]: pthread_t
+  ..Donnees partagees..
+  - ids[PRODUCER_COUNT]: int  {numero de capteur de chaque producteur}
+  - data_buffer[BUFFER_SIZE]: MSG_BLOCK
+  - tab_indices_libres[BUFFER_SIZE]: int
+  - tab_indices_pleines[BUFFER_SIZE]: int
+  - j_vide, j_plein: int  {producteurs}
+  - i_vide, i_plein: int  {consumer}
+  - produceCount: volatile unsigned int
+  ..Semaphores..
+  - sem_libre: sem_t* {init = BUFFER_SIZE}
+  - sem_plein: sem_t* {init = 0}
+  ..Mutex..
+  - mutex_idx_libre: pthread_mutex_t
+  - mutex_idx_plein: pthread_mutex_t
+  - mutex_count: pthread_mutex_t
+  --
+  - produce(void* params)
+  - createSynchronizationObjects(): unsigned int
+  - incrementProducedCount()
+  + acquisitionManagerInit(): unsigned int
+  + acquisitionManagerJoin()
+}
 
 interface IMessageAdder
 IMessageAdder : + getCurrentSum(): MSG_BLOCK
-IMessageAdder : + getConsumedCount(): Integer
+IMessageAdder : + getConsumedCount(): unsigned int
+IMessageAdder : + getCoherentCount(MSG_BLOCK* sum, unsigned int* count)
 
-class MessageAdder
-MessageAdder : - consumer: pthread_t
-MessageAdder : - currentSum: MSG_BLOCK
-MessageAdder : - consumedCount: Integer
-MessageAdder : - sum()
-MessageAdder : + messageAdderInit()
-MessageAdder : + messageAdderJoin()
+class MessageAdder {
+  ..Threads..
+  - consumer: pthread_t
+  ..Donnees partagees..
+  - out: volatile MSG_BLOCK
+  - consumeCount: volatile unsigned int
+  ..Mutex..
+  - mutex_consume: pthread_mutex_t
+  --
+  - sum(void* parameters)
+  - incrementConsumeCount()
+  + messageAdderInit()
+  + messageAdderJoin()
+}
 
 class Msg
-Msg : + messageAdd()
-Msg : + messageCheck()
+Msg : + messageAdd(MSG_BLOCK* src, MSG_BLOCK* add)
+Msg : + messageCheck(MSG_BLOCK* mBlock): unsigned int
 
 interface IDisplay
-IDisplay : + messageDisplay(MSG_BLOCK mBlock)
-IDisplay : + print(Integer producedCount, Integer consumedCount)
+IDisplay : + messageDisplay(MSG_BLOCK* mBlock)
+IDisplay : + print(unsigned int producedCount, unsigned int consumedCount)
 
-class DisplayManager
-DisplayManager : - display: pthread_t
-DisplayManager : - display()
-DisplayManager : + displayManagerInit()
-DisplayManager : + displayManagerJoin()
+class DisplayManager {
+  ..Threads..
+  - displayThread: pthread_t
+  --
+  - display(void* parameters)
+  + displayManagerInit()
+  + displayManagerJoin()
+}
 
 AcquisitionManager .d.> ISensor : use
 AcquisitionManager .r.|> IAcquisitionManager : implement
+AcquisitionManager ..> Msg : use (messageCheck)
 
 MessageAdder .r.|> IMessageAdder : implement
-MessageAdder *-d- Msg 
+MessageAdder ..> Msg : use (messageAdd)
 
-DisplayManager .d.|> IDisplay : use
+DisplayManager .d.> IDisplay : use
 
 MessageAdder ..> IAcquisitionManager : use
 DisplayManager ..> IMessageAdder : use
 DisplayManager ..> IAcquisitionManager : use
-
 
 MultitaskingAccumulator *-r- AcquisitionManager : 1
 MultitaskingAccumulator *-r- MessageAdder : 1
