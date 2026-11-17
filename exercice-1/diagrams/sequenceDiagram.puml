@@ -43,10 +43,10 @@ main -> disp : pthread_create
 activate disp #BBBBFF
 note over disp : display
 end
-main -> disp : displayManagerJoin: pthread_join
+main -> disp : displayManagerJoin(): pthread_join
 deactivate main
 
-opt checksum valide (Exigence 3)
+group condition: checksum valide (Exigence 3)
 prod -> semLibre : sem_wait (attend une case libre)
 activate semLibre #gold
 return
@@ -95,11 +95,11 @@ end
 
 disp --> main --++
 deactivate disp
-main -> cons : messageAdderJoin: pthread_join
+main -> cons : messageAdderJoin(): pthread_join
 deactivate main
 cons --> main --++
 deactivate cons
-main -> prod : acquisitionManagerJoin: pthread_join
+main -> prod : acquisitionManagerJoin(): pthread_join
 deactivate main
 prod --> main --++
 deactivate prod
